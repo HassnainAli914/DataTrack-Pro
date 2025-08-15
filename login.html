@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - DataTrack Pro</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <div class="login-container">
         <div class="login-card">
@@ -24,10 +27,39 @@
                     <input type="password" id="password" name="password" required>
                 </div>
                 <button type="submit" class="login-btn">Login</button>
+                <!-- WhatsApp Contact Admin Button -->
+                <button type="button" class="whatsapp-btn" onclick="window.open('https://wa.me/923079188914?text=Hello%20Admin%2C%20I%20need%20access%20to%20DataTrack%20Pro','_blank')">
+                    📱 For Access Contact Admin
+                </button>
             </form>
             <div id="errorMessage" class="error-message"></div>
         </div>
     </div>
+
+    <style>
+        .whatsapp-btn {
+            margin-top: 10px;
+            padding: 10px;
+            width: 100%;
+            background-color: #25D366;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .whatsapp-btn:hover {
+            background-color: #1ebe5d;
+        }
+    </style>
+
     <script src="auth.js"></script>
 </body>
+
 </html>
