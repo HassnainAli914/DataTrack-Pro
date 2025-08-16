@@ -1,6 +1,0 @@
-[
-	{ "usernameHash": "a9c287b663ddeeb9951a6faead91013948639ef22b5183e35fe400d12683ea3c", "passwordHash": "9ca79345900380ba13e63cc476f9da69fb8502e6d356389e7b06176d175e618d", "role": "admin" },
-	{ "usernameHash": "b0773a0b329cf8ac54d81325a8f984f2f02814f24ad3d0237ea842cb4c9fa2d3", "passwordHash": "4c09175847ae4a16f31bc20228757099d8adb29aa4999f4f27b545474b4b9b6d", "role": "user" },
-	{ "usernameHash": "62fc4148a796e87c8a81cae674fe1ab44d6c90b47f1488c4d66d8e2e8b659a0c", "passwordHash": "9ca79345900380ba13e63cc476f9da69fb8502e6d356389e7b06176d175e618d", "role": "admin" }
-]
-

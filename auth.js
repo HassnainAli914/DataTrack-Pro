@@ -1,28 +1,41 @@
-// Salted hash auth configuration
-const SALT = "MySuperSecretKey_OnlyIKnow"; // Private salt
+// ===============================
+// Authentication with Google Sheets backend
+// ===============================
 
-// External accounts store (JSON). Each entry: { usernameHash, passwordHash, role }
+// Salted hash auth configuration
+const SALT = "MySuperSecretKey_OnlyIKnow"; // keep this private
+
+// External accounts store (fetched from Google Sheets)
 let hashedAccounts = [];
 let hashedAccountsLoaded = false;
 
+// Load accounts from Google Spreadsheet
 async function loadHashedAccounts() {
     if (hashedAccountsLoaded) return hashedAccounts;
+
     try {
-        const response = await fetch('hashedAccounts.json', { cache: 'no-store' });
-        if (response.ok) {
-            const data = await response.json();
-            if (Array.isArray(data)) {
-                hashedAccounts = data;
-                hashedAccountsLoaded = true;
-            } else {
-                console.error('hashedAccounts.json is not an array.');
-            }
-        } else {
-            console.error('Failed to fetch hashedAccounts.json:', response.status);
-        }
+        const url = "https://docs.google.com/spreadsheets/d/1BvKB2_gdI00nToCVkLlQOeH74Ndr7AScOErE4poVwVQ/gviz/tq?tqx=out:json";
+
+        const response = await fetch(url);
+        const text = await response.text();
+
+        // Google returns JSON wrapped inside a function → clean it
+        const json = JSON.parse(text.substring(47).slice(0, -2));
+        const rows = json.table.rows;
+
+        // Map columns (skip Timestamp)
+        hashedAccounts = rows.map(r => ({
+            usernameHash: r.c[1]?.v?.trim(),
+            passwordHash: r.c[2]?.v?.trim(),
+            role: r.c[3]?.v?.trim()
+        }));
+
+        hashedAccountsLoaded = true;
+        console.log("Loaded accounts from sheet:", hashedAccounts);
     } catch (err) {
-        console.error('Error loading hashedAccounts.json:', err);
+        console.error("Error loading accounts from Google Sheets:", err);
     }
+
     return hashedAccounts;
 }
 
@@ -30,26 +43,25 @@ async function loadHashedAccounts() {
 async function sha256Hex(input) {
     const encoder = new TextEncoder();
     const data = encoder.encode(input);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    return hashHex;
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 // Check if user is already logged in
 function checkAuth() {
-    const isLoggedIn = localStorage.getItem('loggedIn') === 'true';
-    const currentPage = (window.location.pathname.split('/').pop() || '').toLowerCase();
-    const isLoginPage = currentPage === 'login.html' || currentPage === '';
-    const isHashGenPage = currentPage === 'hashgen.html';
+    const isLoggedIn = localStorage.getItem("loggedIn") === "true";
+    const currentPage = (window.location.pathname.split("/").pop() || "").toLowerCase();
+    const isLoginPage = currentPage === "login.html" || currentPage === "";
+    const isHashGenPage = currentPage === "hashgen.html";
 
     if (!isLoggedIn && !isLoginPage && !isHashGenPage) {
-        window.location.href = 'login.html';
+        window.location.href = "login.html";
         return false;
     }
 
     if (isLoggedIn && isLoginPage) {
-        window.location.href = 'index.html';
+        window.location.href = "index.html";
         return false;
     }
 
@@ -59,161 +71,164 @@ function checkAuth() {
 // Login function (salted SHA-256 verification)
 async function login(username, password) {
     try {
-        // Ensure accounts are loaded
         await loadHashedAccounts();
         const computedUserHash = await sha256Hex(String(username) + SALT);
         const computedPassHash = await sha256Hex(String(password) + SALT);
 
-		// Find matching account by hashes
-		const match = hashedAccounts.find(acc => acc.usernameHash === computedUserHash && acc.passwordHash === computedPassHash);
-		if (match) {
-			localStorage.setItem('loggedIn', 'true');
-			// Avoid storing plaintext username; store hash and role only
-			localStorage.setItem('currentUserHash', computedUserHash);
-			localStorage.setItem('currentUserRole', match.role);
-			return { success: true };
-		}
-		return { success: false, message: 'Invalid username or password' };
+        console.log("Computed usernameHash:", computedUserHash);
+        console.log("Computed passwordHash:", computedPassHash);
+
+        // Find matching account
+        const match = hashedAccounts.find(
+            acc => acc.usernameHash === computedUserHash && acc.passwordHash === computedPassHash
+        );
+
+        if (match) {
+            localStorage.setItem("loggedIn", "true");
+            localStorage.setItem("currentUserHash", computedUserHash);
+            localStorage.setItem("currentUserRole", match.role);
+            return { success: true };
+        }
+
+        return { success: false, message: "Invalid username or password" };
     } catch (err) {
-        return { success: false, message: 'Secure hashing not supported in this context' };
+        console.error(err);
+        return { success: false, message: "Secure hashing not supported in this context" };
     }
 }
 
-// Logout function
+// Logout
 function logout() {
-    localStorage.removeItem('loggedIn');
-    localStorage.removeItem('currentUserHash');
-    localStorage.removeItem('currentUserRole');
-    window.location.href = 'login.html';
+    localStorage.removeItem("loggedIn");
+    localStorage.removeItem("currentUserHash");
+    localStorage.removeItem("currentUserRole");
+    window.location.href = "login.html";
 }
 
-// Get current user
+// Get current user info
 function getCurrentUser() {
-    const hash = localStorage.getItem('currentUserHash');
-    const role = localStorage.getItem('currentUserRole');
+    const hash = localStorage.getItem("currentUserHash");
+    const role = localStorage.getItem("currentUserRole");
     if (!hash || !role) return null;
     return { usernameHash: hash, role };
 }
 
-// Check if current user is admin
+// Check if user is admin
 function isAdmin() {
-    const role = localStorage.getItem('currentUserRole');
-    return role === 'admin';
+    return localStorage.getItem("currentUserRole") === "admin";
 }
 
 // Initialize authentication on page load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener("DOMContentLoaded", function () {
     checkAuth();
-    
-    // Handle login form submission
-    const loginForm = document.getElementById('loginForm');
+
+    // Handle login form
+    const loginForm = document.getElementById("loginForm");
     if (loginForm) {
-        loginForm.addEventListener('submit', async function(e) {
+        loginForm.addEventListener("submit", async function (e) {
             e.preventDefault();
-            
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const errorMessage = document.getElementById('errorMessage');
-            
+
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const errorMessage = document.getElementById("errorMessage");
+
             if (!username || !password) {
-                errorMessage.textContent = 'Please enter both username and password';
+                errorMessage.textContent = "Please enter both username and password";
                 return;
             }
-            
+
             const result = await login(username, password);
-            
+
             if (result && result.success) {
-                errorMessage.textContent = '';
-                window.location.href = 'index.html';
+                errorMessage.textContent = "";
+                window.location.href = "index.html";
             } else {
-                errorMessage.textContent = (result && result.message) || 'Login failed';
+                errorMessage.textContent = (result && result.message) || "Login failed";
             }
         });
     }
-    
+
     // Update navigation active state
     updateActiveNav();
-    
-    // Add click event listeners to navigation links to close mobile menu
-    const navLinks = document.querySelectorAll('.nav-link');
+
+    // Handle mobile nav link clicks
+    const navLinks = document.querySelectorAll(".nav-link");
     navLinks.forEach(link => {
-        link.addEventListener('click', function() {
-            // Close mobile menu when a link is clicked
+        link.addEventListener("click", function () {
             closeMobileMenu();
         });
     });
 });
 
-// Update active navigation item
+// Highlight active nav
 function updateActiveNav() {
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-    const navItems = document.querySelectorAll('.nav-item');
-    
+    const currentPage = window.location.pathname.split("/").pop() || "index.html";
+    const navItems = document.querySelectorAll(".nav-item");
+
     navItems.forEach(item => {
-        const link = item.querySelector('.nav-link');
+        const link = item.querySelector(".nav-link");
         if (link) {
-            const href = link.getAttribute('href');
-            if (href === currentPage || (currentPage === '' && href === 'index.html')) {
-                item.classList.add('active');
+            const href = link.getAttribute("href");
+            if (href === currentPage || (currentPage === "" && href === "index.html")) {
+                item.classList.add("active");
             } else {
-                item.classList.remove('active');
+                item.classList.remove("active");
             }
         }
     });
 }
 
-// Mobile menu functionality
+// Mobile menu toggle
 function toggleMobileMenu() {
-    const mobileMenu = document.querySelector('.nav-menu');
-    const mobileToggle = document.querySelector('.mobile-menu-toggle');
-    
+    const mobileMenu = document.querySelector(".nav-menu");
+    const mobileToggle = document.querySelector(".mobile-menu-toggle");
+
     if (mobileMenu && mobileToggle) {
-        mobileMenu.classList.toggle('active');
-        mobileToggle.classList.toggle('active');
-        
-        // Prevent body scroll when menu is open
-        if (mobileMenu.classList.contains('active')) {
-            document.body.style.overflow = 'hidden';
+        mobileMenu.classList.toggle("active");
+        mobileToggle.classList.toggle("active");
+
+        if (mobileMenu.classList.contains("active")) {
+            document.body.style.overflow = "hidden";
         } else {
-            document.body.style.overflow = '';
+            document.body.style.overflow = "";
         }
     }
 }
 
-// Close mobile menu when clicking on a link
+// Close mobile menu
 function closeMobileMenu() {
-    const mobileMenu = document.querySelector('.nav-menu');
-    const mobileToggle = document.querySelector('.mobile-menu-toggle');
-    
+    const mobileMenu = document.querySelector(".nav-menu");
+    const mobileToggle = document.querySelector(".mobile-menu-toggle");
+
     if (mobileMenu && mobileToggle) {
-        mobileMenu.classList.remove('active');
-        mobileToggle.classList.remove('active');
-        document.body.style.overflow = '';
+        mobileMenu.classList.remove("active");
+        mobileToggle.classList.remove("active");
+        document.body.style.overflow = "";
     }
 }
 
-// Close mobile menu when clicking outside
-document.addEventListener('click', function(event) {
-    const mobileMenu = document.querySelector('.nav-menu');
-    const mobileToggle = document.querySelector('.mobile-menu-toggle');
-    
-    if (mobileMenu && mobileToggle && 
-        !mobileMenu.contains(event.target) && 
+// Close menu on outside click
+document.addEventListener("click", function (event) {
+    const mobileMenu = document.querySelector(".nav-menu");
+    const mobileToggle = document.querySelector(".mobile-menu-toggle");
+
+    if (mobileMenu && mobileToggle &&
+        !mobileMenu.contains(event.target) &&
         !mobileToggle.contains(event.target)) {
-        mobileMenu.classList.remove('active');
-        mobileToggle.classList.remove('active');
-        document.body.style.overflow = '';
+        mobileMenu.classList.remove("active");
+        mobileToggle.classList.remove("active");
+        document.body.style.overflow = "";
     }
 });
 
-// Close mobile menu on window resize
-window.addEventListener('resize', function() {
+// Reset menu on resize
+window.addEventListener("resize", function () {
     if (window.innerWidth > 768) {
         closeMobileMenu();
     }
 });
 
-// Export functions for use in other scripts
+// Expose functions
 window.auth = {
     login,
     logout,

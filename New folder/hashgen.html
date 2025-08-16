@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataTrack Pro Credentials Maker</title>
+    <link rel="stylesheet" href="hashgen.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h1>DataTrack Pro Credentials Maker</h1>
+                <p class="note">Use this tool to generate salted SHA-256 hashes. You can then save both <b>original</b>
+                    and <b>hashed</b> credentials into their respective Google Sheets.</p>
+            </div>
+
+            <div class="hashgen-card">
+                <form id="hashForm" class="tool-form">
+                    <div class="form-group">
+                        <label for="hgUsername">Username</label>
+                        <input type="text" id="hgUsername" placeholder="admin" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="hgPassword">Password</label>
+                        <input type="text" id="hgPassword" placeholder="StrongPassword123" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="hgRole">Role</label>
+                        <select id="hgRole">
+                            <option value="admin">admin</option>
+                            <option value="user">user</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="submit-btn">Generate Hashes</button>
+                    <button id="fetchUsers" class="service-btn" type="button">Fetch All Users</button>
+                </form>
+
+                <div id="hashOutput" class="hidden">
+                    <h3>Generated Hashes</h3>
+                    <p class="note">Paste only if needed. Normally you will save directly to Google Sheets.</p>
+                    <div>
+                        <strong>Username Hash:</strong>
+                        <div id="outUser" class="mono"></div>
+                    </div>
+                    <div style="margin-top:12px;">
+                        <strong>Password Hash:</strong>
+                        <div id="outPass" class="mono"></div>
+                    </div>
+                    <div class="hashgen-actions">
+                        <button id="copyUser" class="service-btn" type="button">Copy Username Hash</button>
+                        <button id="copyPass" class="service-btn" type="button">Copy Password Hash</button>
+                    </div>
+
+                    <div style="margin-top:18px;">
+                        <h4>Google Sheets Entry (for reference)</h4>
+                        <div id="accountSnippet" class="mono"></div>
+                    </div>
+
+                    <div class="hashgen-actions">
+                        <button id="saveCreds" class="service-btn" type="button">Save Credentials</button>
+                    </div>
+
+                    
+                </div>
+            </div>
+        </div>
+        <div id="usersTableWrapper" class="hidden" style="margin-top:20px;">
+            <h3>All Users</h3>
+            <table id="usersTable" border="1" cellpadding="6" cellspacing="0"
+                style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th>Sr No</th>
+                        <th>Username (Real)</th>
+                        <th>Password (Real)</th>
+                        <th>Username Hash</th>
+                        <th>Password Hash</th>
+                        <th>Role</th>
+                        <th>Delete</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Popup Message -->
+        <div id="popupMessage" class="hidden popup">
+            <div class="popup-content">
+                <p id="popupText"></p>
+                <button id="popupClose" class="service-btn">OK</button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // ===============================
+        // DataTrack Pro - Hash Generator Logic (Enhanced)
+        // ===============================
+
+        const SALT = "MySuperSecretKey_OnlyIKnow";
+
+        /* ---- Google Form endpoints (unchanged) ---- */
+        const FORM_ORIGINAL_URL = "https://docs.google.com/forms/d/e/1FAIpQLScuU7_JCu92waWLjQmwFBDdS8R18wbT4Atflax4IyMHVgVGYw/formResponse";
+        const FORM_HASHED_URL = "https://docs.google.com/forms/d/e/1FAIpQLSchx42jyNLlJ-QB4M8AB_DonkibJfi8fsN0Y2FKmmOzPagzVQ/formResponse";
+
+        const ENTRY_ORIG = {
+            username: "entry.447608727",
+            password: "entry.504259941",
+            role: "entry.50765642"
+        };
+        const ENTRY_HASH = {
+            usernameHash: "entry.109624128",
+            passwordHash: "entry.1426207743",
+            role: "entry.146631532"
+        };
+
+        /* ---- Published-to-web (gviz) JSON feeds ---- */
+        const ORIGINAL_SHEET_URL = "https://docs.google.com/spreadsheets/d/1MMGgBI94j4vp8bmU8DJ_Tku0qp19LLAvZrRe28jdPxA/gviz/tq?tqx=out:json";
+        const HASHES_SHEET_URL = "https://docs.google.com/spreadsheets/d/1BvKB2_gdI00nToCVkLlQOeH74Ndr7AScOErE4poVwVQ/gviz/tq?tqx=out:json";
+
+        /* ---- Apps Script web apps for realtime delete ---- */
+        const REAL_SCRIPT_API = "https://script.google.com/macros/s/AKfycbzQyfnMOeIYXJ1u13Fv3fb-R11vgofFIiSs1qYgTqnisYzODGBP4oCl0odRCQ0eVpaW6g/exec";
+        const HASHES_SCRIPT_API = "https://script.google.com/macros/s/AKfycbwl519okMRIO6MyodApxXNtL_byKs-X0shuLVDlK8PGDpUJ_p1lAiZqiImjCt2vY2yL/exec";
+
+        /* ---- State ---- */
+        let latestCreds = null;
+        let existingHashes = new Set(); // usernameHash set (from hashes sheet)
+
+        // ===============================
+        // Helpers
+        // ===============================
+        async function sha256Hex(input) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(input);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            return Array.from(new Uint8Array(hashBuffer))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function showPopup(message, success = true) {
+            const popup = document.createElement("div");
+            popup.textContent = message;
+            popup.style.position = "fixed";
+            popup.style.bottom = "20px";
+            popup.style.right = "20px";
+            popup.style.padding = "12px 18px";
+            popup.style.borderRadius = "8px";
+            popup.style.fontWeight = "600";
+            popup.style.zIndex = "1000";
+            popup.style.boxShadow = "0 6px 16px rgba(0,0,0,.25)";
+            popup.style.color = success ? "#003c1d" : "#3c0000";
+            popup.style.background = success ? "#7cf0d6" : "#ff6b88";
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 3000);
+        }
+
+        async function submitToGoogleForm(formUrl, fields) {
+            const formData = new FormData();
+            for (const [k, v] of Object.entries(fields)) formData.append(k, v);
+            await fetch(formUrl, { method: "POST", body: formData, mode: "no-cors" });
+        }
+
+        // Parse a “published to web” gviz JSON feed into rows[cols]
+        async function fetchSheet(url) {
+            const res = await fetch(url);
+            const text = await res.text();
+            const json = JSON.parse(text.substring(47).slice(0, -2));
+            // rows = array of arrays (strings)
+            return json.table.rows
+                .map(r => (r.c || []).map(c => (c ? c.v : "")))
+                .filter(row => row.some(cell => String(cell).trim() !== "")); // drop blank lines
+        }
+
+        // Build usernameHash set from the HASHES sheet (col 1 = usernameHash; col 0 = Timestamp)
+        async function loadExistingHashes() {
+            try {
+                const rows = await fetchSheet(HASHES_SHEET_URL);
+                existingHashes.clear();
+                rows.forEach(r => {
+                    const usernameHash = r[1]; // ✅ col B = usernameHash
+                    if (usernameHash) existingHashes.add(String(usernameHash).trim());
+                });
+            } catch (err) {
+                console.error("Failed to load existing hashes:", err);
+            }
+        }
+
+        // ===============================
+        // Generate
+        // ===============================
+        document.getElementById('hashForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('hgUsername').value.trim();
+            const p = document.getElementById('hgPassword').value.trim();
+            const r = document.getElementById('hgRole').value;
+            if (!u || !p) return;
+
+            const uHash = await sha256Hex(u + SALT);
+            const pHash = await sha256Hex(p + SALT);
+
+            latestCreds = { username: u, password: p, role: r, usernameHash: uHash, passwordHash: pHash };
+
+            document.getElementById('outUser').textContent = uHash;
+            document.getElementById('outPass').textContent = pHash;
+            document.getElementById('accountSnippet').textContent = `${uHash} | ${pHash} | ${r}`;
+            document.getElementById('hashOutput').classList.remove('hidden');
+        });
+
+        // ===============================
+        // Save (no duplicates)
+        // ===============================
+        document.getElementById('saveCreds').addEventListener('click', async () => {
+            if (!latestCreds) return;
+
+            const btn = document.getElementById('saveCreds');
+            btn.disabled = true;
+
+            try {
+                // Refresh set to catch new rows added by others
+                await loadExistingHashes();
+
+                // Prevent duplicates by usernameHash (salted)
+                if (existingHashes.has(latestCreds.usernameHash)) {
+                    showPopup("⚠️ This username already exists.", false);
+                    return;
+                }
+
+                // 1) Save original creds to the “Real” form/sheet
+                await submitToGoogleForm(FORM_ORIGINAL_URL, {
+                    [ENTRY_ORIG.username]: latestCreds.username,
+                    [ENTRY_ORIG.password]: latestCreds.password,
+                    [ENTRY_ORIG.role]: latestCreds.role
+                });
+
+                // 2) Save hashed creds to the “Hashes” form/sheet
+                await submitToGoogleForm(FORM_HASHED_URL, {
+                    [ENTRY_HASH.usernameHash]: latestCreds.usernameHash,
+                    [ENTRY_HASH.passwordHash]: latestCreds.passwordHash,
+                    [ENTRY_HASH.role]: latestCreds.role
+                });
+
+                // 3) Update local set so second click won’t re-add
+                existingHashes.add(latestCreds.usernameHash);
+
+                showPopup("✅ Credentials saved successfully!");
+            } catch (err) {
+                console.error(err);
+                showPopup("❌ Failed to save credentials.", false);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        // ===============================
+        // Fetch All Users (table)
+        // ===============================
+        async function renderUsersTable() {
+            try {
+                const [realRows, hashRows] = await Promise.all([
+                    fetchSheet(ORIGINAL_SHEET_URL), // [Timestamp, Username, Password, Role]
+                    fetchSheet(HASHES_SHEET_URL)    // [Timestamp, UsernameHash, PasswordHash, Role]
+                ]);
+
+                const tbody = document.querySelector("#usersTable tbody");
+                tbody.innerHTML = "";
+
+                const rowCount = Math.min(realRows.length, hashRows.length);
+
+                for (let i = 0; i < rowCount; i++) {
+                    const real = realRows[i] || [];
+                    const hash = hashRows[i] || [];
+
+                    const srNo = i + 1;     // 1-based for UI and deletion API
+                    const username = real[1] ?? "";
+                    const password = real[2] ?? "";
+                    const role = (real[3] ?? hash[3]) ?? "";
+                    const usernameHash = hash[1] ?? "";
+                    const passwordHash = hash[2] ?? "";
+
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+        <td>${srNo}</td>
+        <td>${username}</td>
+        <td>${password}</td>
+        <td>${usernameHash}</td>
+        <td>${passwordHash}</td>
+        <td>${role}</td>
+        <td><button class="deleteBtn" data-sr="${srNo}">Delete</button></td>
+      `;
+                    tbody.appendChild(tr);
+                }
+
+                document.getElementById("usersTableWrapper").classList.remove("hidden");
+
+                // Hook delete buttons (Apps Script delete on both sheets)
+                document.querySelectorAll(".deleteBtn").forEach(btn => {
+                    btn.addEventListener("click", async (e) => {
+                        const srNo = e.currentTarget.dataset.sr;
+                        if (!confirm(`Delete user with Sr No ${srNo}?`)) return;
+
+                        try {
+                            // Delete from Real sheet
+                            await fetch(REAL_SCRIPT_API, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                                body: new URLSearchParams({ action: "delete", rowIndex: srNo })
+                            });
+
+                            // Delete from Hashes sheet
+                            await fetch(HASHES_SCRIPT_API, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                                body: new URLSearchParams({ action: "delete", rowIndex: srNo })
+                            });
+
+                            showPopup("✅ User deleted successfully!");
+                            // Re-render to keep Sr No in sync after row removal
+                            await renderUsersTable();
+                            // Also refresh the duplicate set
+                            await loadExistingHashes();
+                        } catch (err) {
+                            console.error("Delete failed", err);
+                            showPopup("❌ Failed to delete user", false);
+                        }
+                    });
+                });
+            } catch (err) {
+                console.error(err);
+                showPopup("❌ Failed to fetch users", false);
+            }
+        }
+
+        document.getElementById("fetchUsers").addEventListener("click", renderUsersTable);
+
+        // ===============================
+        // Init
+        // ===============================
+        loadExistingHashes();
+
+        /* ---- Copy buttons ---- */
+        document.getElementById('copyUser').addEventListener('click', async () => {
+            await navigator.clipboard.writeText(document.getElementById('outUser').textContent);
+        });
+        document.getElementById('copyPass').addEventListener('click', async () => {
+            await navigator.clipboard.writeText(document.getElementById('outPass').textContent);
+        });
+
+
+    </script>
+</body>
+
+</html>
